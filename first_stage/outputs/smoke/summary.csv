@@ -1,0 +1,3 @@
+﻿time_steps,mode,test_loss,test_accuracy,test_macro_f1,tested_samples,state_reset,step_mode_max_error
+20,smoke,3.7969207763671875,0.0,0.0,2,True,0.0
+240,smoke,25.000064849853516,0.0,0.0,2,True,0.0

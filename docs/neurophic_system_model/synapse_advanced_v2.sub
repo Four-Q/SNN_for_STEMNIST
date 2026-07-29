@@ -1,0 +1,48 @@
+* Advanced-v2 synapse device model
+* Pin order: G D S
+* Validated mainly at VDS = 1 V
+
+.SUBCKT SYNAPSE_ADV_V2 G D S PARAMS:
++ G0=0
++ G1=0
++ G2=0
++ G3=0
++ G11=0.000663574393119
++ G12=0.00122698089109
++ G13=4.42225017007e-05
++ G23=0.000671314326731
++ GV=6.561726644e-06
++ VTH=0.679973290013
++ VNORM=2
++ PDRIVE=1.1281797291
++ RON1=651321.797132
++ ROFF1=58783.4118027
++ RON2=6453.3547737
++ ROFF2=7225.92691131
++ RON3=54391.4170977
++ ROFF3=22092.0764053
+
+* Normalized gate excitation
+BDRV Q 0 V=pow(max((V(G,S)-{VTH})/({VNORM}-{VTH}),0),{PDRIVE})
+
+* Slow state X1
+BX1 XF Q I=if(V(G,S)>{VTH},(V(XF)-V(Q))/{RON1},V(XF)/{ROFF1})
+CF XF 0 1u
+
+* Fast state X2
+BX2 XS Q I=if(V(G,S)>{VTH},(V(XS)-V(Q))/{RON2},V(XS)/{ROFF2})
+CS XS 0 1u
+
+* Medium-speed state X3
+BX3 X3 Q I=if(V(G,S)>{VTH},(V(X3)-V(Q))/{RON3},V(X3)/{ROFF3})
+C3 X3 0 1u
+
+* Small leakage resistors for numerical convergence
+RLEAK1 XF 0 1T
+RLEAK2 XS 0 1T
+RLEAK3 X3 0 1T
+
+* Drain-source conductive channel
+BCH D S I=V(D,S)*max({G0}+{G1}*V(XF)+{G2}*V(XS)+{G3}*V(X3)+{G11}*V(XF)*V(XF)+{G12}*V(XF)*V(XS)+{G13}*V(XF)*V(X3)+{G23}*V(XS)*V(X3)+{GV}*V(Q),0)
+
+.ENDS SYNAPSE_ADV_V2

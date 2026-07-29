@@ -1,0 +1,2 @@
+﻿epoch,train_loss,train_accuracy,train_macro_f1,val_loss,val_accuracy,val_macro_f1,train_seconds,val_seconds,train_samples_per_second,val_samples_per_second,peak_memory_mb,train_rate_lif1,train_rate_lif2,train_rate_output_lif,val_rate_lif1,val_rate_lif2,val_rate_output_lif
+1,4.616964340209961,0.0,0.0,3.7230165004730225,0.0,0.0,0.07992189999822585,0.017133800000010524,25.02443010044052,116.72833813857822,0.0,0.25001847743988037,0.0494791679084301,0.016428571194410324,0.25024038553237915,0.0397135429084301,0.0028571428265422583

@@ -1,0 +1,28 @@
+LTspice 26.0.2 for Windows
+Circuit: C:\Users\Fortyfour\Desktop\SNN_for_STEMNIST\docs\neurophic_system_model\System_with_TIA.net
+Start Time: Wed Jul 29 15:44:59 2026
+Options:plotwinsize=0
+C:\Users\Fortyfour\Desktop\SNN_for_STEMNIST\docs\neurophic_system_model\6-0114-2.3V-1uF-10kohm-2-imtegrate-Vd1V.pwl(1): Negative value detected.
+Correcting your data like SCOPEDATA does. If that's what you actually want, use SCOPEDATA=<filename> instead.
+(See the LTspice help for more details. Note: There is really no substitute for reading that help.
+Don't post questions on the Internet about this unless you have read and understood the detailed
+explanation in the LTspice help. Don't be that person!)
+
+-0.099375	0.0653261207044125
+^^^^^^^^^
+solver = Normal
+Maximum thread count: 8
+tnom = 27
+temp = 27
+method = trap
+Per .tran options, skipping operating point for transient analysis.
+Changing Tseed to 2e-09
+Changing Tseed to 2e-11
+Total elapsed time: 2.417 seconds.
+
+Files loaded:
+C:\Users\Fortyfour\Desktop\SNN_for_STEMNIST\docs\neurophic_system_model\System_with_TIA.net
+C:\Users\Fortyfour\Desktop\SNN_for_STEMNIST\docs\neurophic_system_model\NbOx_OSC_stable.lib
+C:\Users\Fortyfour\Desktop\SNN_for_STEMNIST\docs\neurophic_system_model\synapse_advanced_v2.sub
+C:\Users\Fortyfour\AppData\Local\LTspice\lib\sub\UniversalOpAmp2.lib
+
