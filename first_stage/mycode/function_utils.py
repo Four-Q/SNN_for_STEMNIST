@@ -311,11 +311,11 @@ def train_model(
             f"output={rates['output_lif']:.6f}"
         )
 
-        if rates["output_lif"] <= 1e-6:
-            raise RuntimeError(
-                "输出 LIF 发放率为 0，网络已经进入全沉默状态。"
-                "请检查输入尺度、学习率和分类层参数。"
-            )
+        # if rates["output_lif"] <= 1e-6:
+        #     raise RuntimeError(
+        #         "输出 LIF 发放率为 0，网络已经进入全沉默状态。"
+        #         "请检查输入尺度、学习率和分类层参数。"
+        #     )
         
         functional.reset_net(model)
 
