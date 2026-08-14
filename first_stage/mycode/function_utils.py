@@ -1,6 +1,8 @@
 import torch
 from tqdm.auto import tqdm
 from spikingjelly.activation_based import functional
+from pathlib import Path
+import matplotlib.pyplot as plt
 
 # 对原始ADC压力进行固定物理映射（归一化）
 ADC_BASELINE = 75.0
@@ -391,3 +393,234 @@ def train_model(
     functional.reset_net(model)
 
     return history
+
+
+#######################################
+# 可视化训练history
+
+def plot_training_history(
+    history,
+    save_path=None,
+    show=True,
+    dpi=300,
+):
+    """
+    绘制模型训练历史。
+
+    左图：训练集 loss 和 accuracy
+    右图：验证集 loss 和 accuracy
+
+    参数：
+        history:
+            train_model() 返回的历史字典，必须包含：
+            train_loss、train_accuracy、val_loss、val_accuracy。
+
+        save_path:
+            图片保存路径，例如：
+            "../outputs/2/training_history.png"
+            设为 None 时不保存。
+
+        show:
+            是否在 Notebook 中显示图片。
+
+        dpi:
+            保存图片的分辨率。
+
+    返回：
+        matplotlib Figure 对象。
+    """
+
+    required_keys = {
+        "train_loss",
+        "train_accuracy",
+        "val_loss",
+        "val_accuracy",
+    }
+
+    missing_keys = required_keys.difference(history)
+
+    if missing_keys:
+        raise KeyError(
+            f"history 缺少字段：{sorted(missing_keys)}"
+        )
+
+    lengths = {
+        key: len(history[key])
+        for key in required_keys
+    }
+
+    if len(set(lengths.values())) != 1:
+        raise ValueError(
+            f"history 中各指标长度不一致：{lengths}"
+        )
+
+    num_epochs = lengths["train_loss"]
+
+    if num_epochs == 0:
+        raise ValueError("history 中没有训练记录。")
+
+    epochs = range(1, num_epochs + 1)
+
+    figure, axes = plt.subplots(
+        nrows=1,
+        ncols=2,
+        figsize=(14, 5),
+        sharex=True,
+    )
+
+    # ========================================================
+    # 左图：训练结果
+    # ========================================================
+    train_loss_axis = axes[0]
+    train_accuracy_axis = train_loss_axis.twinx()
+
+    train_loss_line = train_loss_axis.plot(
+        epochs,
+        history["train_loss"],
+        color="tab:red",
+        marker="o",
+        markersize=3,
+        linewidth=1.8,
+        label="Train Loss",
+    )
+
+    train_accuracy_line = train_accuracy_axis.plot(
+        epochs,
+        history["train_accuracy"],
+        color="tab:blue",
+        marker="s",
+        markersize=3,
+        linewidth=1.8,
+        label="Train Accuracy",
+    )
+
+    train_loss_axis.set_title("Training Results")
+    train_loss_axis.set_xlabel("Epoch")
+    train_loss_axis.set_ylabel(
+        "Loss",
+        color="tab:red",
+    )
+    train_accuracy_axis.set_ylabel(
+        "Accuracy",
+        color="tab:blue",
+    )
+    train_accuracy_axis.set_ylim(0.0, 1.0)
+
+    train_loss_axis.tick_params(
+        axis="y",
+        labelcolor="tab:red",
+    )
+    train_accuracy_axis.tick_params(
+        axis="y",
+        labelcolor="tab:blue",
+    )
+
+    train_loss_axis.grid(
+        True,
+        linestyle="--",
+        alpha=0.3,
+    )
+
+    train_lines = (
+        train_loss_line
+        + train_accuracy_line
+    )
+
+    train_loss_axis.legend(
+        train_lines,
+        [line.get_label() for line in train_lines],
+        loc="best",
+    )
+
+    # ========================================================
+    # 右图：验证结果
+    # ========================================================
+    val_loss_axis = axes[1]
+    val_accuracy_axis = val_loss_axis.twinx()
+
+    val_loss_line = val_loss_axis.plot(
+        epochs,
+        history["val_loss"],
+        color="tab:orange",
+        marker="o",
+        markersize=3,
+        linewidth=1.8,
+        label="Validation Loss",
+    )
+
+    val_accuracy_line = val_accuracy_axis.plot(
+        epochs,
+        history["val_accuracy"],
+        color="tab:green",
+        marker="s",
+        markersize=3,
+        linewidth=1.8,
+        label="Validation Accuracy",
+    )
+
+    val_loss_axis.set_title("Validation Results")
+    val_loss_axis.set_xlabel("Epoch")
+    val_loss_axis.set_ylabel(
+        "Loss",
+        color="tab:orange",
+    )
+    val_accuracy_axis.set_ylabel(
+        "Accuracy",
+        color="tab:green",
+    )
+    val_accuracy_axis.set_ylim(0.0, 1.0)
+
+    val_loss_axis.tick_params(
+        axis="y",
+        labelcolor="tab:orange",
+    )
+    val_accuracy_axis.tick_params(
+        axis="y",
+        labelcolor="tab:green",
+    )
+
+    val_loss_axis.grid(
+        True,
+        linestyle="--",
+        alpha=0.3,
+    )
+
+    val_lines = (
+        val_loss_line
+        + val_accuracy_line
+    )
+
+    val_loss_axis.legend(
+        val_lines,
+        [line.get_label() for line in val_lines],
+        loc="best",
+    )
+
+    figure.suptitle(
+        "SNN Training History",
+        fontsize=14,
+    )
+
+    figure.tight_layout()
+
+    if save_path is not None:
+        save_path = Path(save_path)
+        save_path.parent.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        figure.savefig(
+            save_path,
+            dpi=dpi,
+            bbox_inches="tight",
+        )
+
+        print(f"训练曲线已保存：{save_path.resolve()}")
+
+    if show:
+        plt.show()
+    else:
+        plt.close(figure)
+
+    return figure
