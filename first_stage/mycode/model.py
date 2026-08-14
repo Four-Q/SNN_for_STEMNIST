@@ -19,12 +19,14 @@ class ConvSNN(nn.Module):
         num_classes=35,
         dropout=0.3,
         tau=10.0,
+        logit_scale=10.0,
         backend="torch",
     ):
         super().__init__()
 
         self.num_classes = num_classes
         self.tau = tau
+        self.logit_scale = float(logit_scale)
 
         # 第一组：空间特征提取 + 脉冲化
         # [T,N,1,16,16] -> [T,N,8,13,13]
@@ -154,13 +156,15 @@ class ConvSNN(nn.Module):
         # 得到每个时间步的类别脉冲
         output_spikes, firing_rates = self.forward_sequence(inputs)
 
-        # 累计整个时间窗口中的脉冲数量
-        spike_counts = output_spikes.sum(dim=0)
+        # 不直接累加 240 步，避免 logits 和梯度随 T 放大。
+        # 发放率范围是 [0, 1]，乘固定尺度后作为交叉熵 logits。
+        spike_rates = output_spikes.float().mean(dim=0)
+        logits = spike_rates * self.logit_scale
 
         if return_firing_rates:
-            return spike_counts, firing_rates
+            return logits, firing_rates
 
-        return spike_counts
+        return logits
 
     def parameter_count(self):
         return sum(

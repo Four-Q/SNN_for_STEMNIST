@@ -2,6 +2,24 @@ import torch
 from tqdm.auto import tqdm
 from spikingjelly.activation_based import functional
 
+# 对原始ADC压力进行固定物理映射（归一化）
+ADC_BASELINE = 75.0
+ADC_SPAN = 255.0 - ADC_BASELINE
+
+
+def preprocess_pressure(inputs):
+    """
+    将 STEMNIST 原始 ADC 压力从约 [75, 255]
+    映射到 [0, 1]。
+
+    这是固定量程转换，不使用验证集或测试集统计量，
+    因此不存在数据泄漏。
+    """
+    return (
+        (inputs - ADC_BASELINE) / ADC_SPAN
+    ).clamp(0.0, 1.0)
+
+
 def train_epoch(model, train_loader, criterion, optimizer, DEVICE, epoch=None):
     model.train()
 
@@ -34,7 +52,9 @@ def train_epoch(model, train_loader, criterion, optimizer, DEVICE, epoch=None):
             dtype=torch.float32,
             non_blocking=True,
         )
-        
+        # 归一化
+        inputs = preprocess_pressure(inputs)
+
         labels = labels.to(
             DEVICE  ,
             dtype=torch.long,
@@ -50,21 +70,27 @@ def train_epoch(model, train_loader, criterion, optimizer, DEVICE, epoch=None):
         # 清除参数梯度
         optimizer.zero_grad(set_to_none=True)
 
-        # spike_counts: [N,num_classes]
-        spike_counts = model(inputs)
+        # logits: [N,num_classes]
+        logits = model(inputs)
         loss = criterion(
-            spike_counts.float(),
+            logits.float(),
             labels,
         )
         # 反向传播
         loss.backward()
+        # 梯度裁剪
+        grad_norm = torch.nn.utils.clip_grad_norm_(
+                model.parameters(),
+                max_norm=1.0,
+                error_if_nonfinite=True,
+            )
         # 更新参数
         optimizer.step()
 
         # 保存当前批次的统计值
         batch_loss = loss.detach().item()
         predictions = (
-            spike_counts.detach()
+            logits.detach()
             .argmax(dim=1)
         )
         batch_correct = (
@@ -100,7 +126,6 @@ def validate_epoch(
     criterion,
     device,
     epoch=None,
-    scale_inputs=False,
 ):
 
     # 保存模型原来的训练/验证状态
@@ -143,6 +168,8 @@ def validate_epoch(
                 dtype=torch.float32,
                 non_blocking=True,
             )
+            # 归一化
+            inputs = preprocess_pressure(inputs)
 
             labels = labels.to(
                 device,
@@ -157,17 +184,17 @@ def validate_epoch(
             batch_size = labels.size(0)
 
             functional.reset_net(model)
-            # spike_counts: [N,35]
-            spike_counts, firing_rates = model(
+            # logits: [N,35]
+            logits, firing_rates = model(
                 inputs,
                 return_firing_rates=True,
             )
             loss = criterion(
-                spike_counts.float(),
+                logits.float(),
                 labels,
             )
 
-            predictions = spike_counts.argmax(dim=1)
+            predictions = logits.argmax(dim=1)
             batch_correct = (
                 predictions == labels
             ).sum().item()
@@ -267,7 +294,22 @@ def train_model(
             device=device,
             epoch=epoch,
         )
+        # 发放率监控
+        rates = val_metrics["firing_rates"]
 
+        print(
+            "Validation firing rates | "
+            f"lif1={rates['lif1']:.6f} | "
+            f"lif2={rates['lif2']:.6f} | "
+            f"output={rates['output_lif']:.6f}"
+        )
+
+        if rates["output_lif"] <= 1e-6:
+            raise RuntimeError(
+                "输出 LIF 发放率为 0，网络已经进入全沉默状态。"
+                "请检查输入尺度、学习率和分类层参数。"
+            )
+        
         functional.reset_net(model)
 
         # 记录历史数据
