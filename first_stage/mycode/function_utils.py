@@ -3,6 +3,7 @@ from tqdm.auto import tqdm
 from spikingjelly.activation_based import functional
 from pathlib import Path
 import matplotlib.pyplot as plt
+from matplotlib.ticker import PercentFormatter
 
 # 对原始ADC压力进行固定物理映射（归一化）
 ADC_BASELINE = 75.0
@@ -245,7 +246,6 @@ def validate_epoch(
         },
     }
 
-from pathlib import Path
 def train_model(
     model,
     train_loader,
@@ -255,6 +255,7 @@ def train_model(
     device,
     num_epochs,
     save_path="best_model.pt",
+    scheduler=None
 ):
     save_path = Path(save_path)
     save_path.parent.mkdir(
@@ -267,6 +268,7 @@ def train_model(
         "train_accuracy": [],
         "val_loss": [],
         "val_accuracy": [],
+        "learning_rate": []
     }
 
     best_val_accuracy = -1.0
@@ -276,6 +278,9 @@ def train_model(
     functional.reset_net(model)
 
     for epoch in range(1, num_epochs + 1):
+        # 当前学习率
+        current_lr = optimizer.param_groups[0]["lr"]
+
         # 训练
         train_metrics = train_epoch(
             model=model,
@@ -327,6 +332,7 @@ def train_model(
         history["val_accuracy"].append(
             val_metrics["accuracy"]
         )
+        history["learning_rate"].append(current_lr)
 
         train_loss = train_metrics["loss"]
         train_accuracy = train_metrics["accuracy"]
@@ -338,9 +344,17 @@ def train_model(
             f"Train loss: {train_loss:.4f} | "
             f"Train accuracy: {train_accuracy:.4f} | "
             f"Val loss: {val_loss:.4f} | "
-            f"Val accuracy: {val_accuracy:.4f}"
+            f"Val accuracy: {val_accuracy:.4f} | "
+            f"LR: {current_lr:.6g}"
         )
 
+        # 学习率衰退
+        if scheduler is not None:
+            if isinstance(scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
+                scheduler.step(val_loss)
+            else:
+                scheduler.step()
+        
         # print(
         #     "Validation firing rates:",
         #     val_metrics["firing_rates"],
@@ -407,8 +421,8 @@ def plot_training_history(
     """
     绘制模型训练历史。
 
-    左图：训练集 loss 和 accuracy
-    右图：验证集 loss 和 accuracy
+    左图：训练集和验证集 loss
+    右图：训练集和验证集 accuracy
 
     参数：
         history:
@@ -417,7 +431,7 @@ def plot_training_history(
 
         save_path:
             图片保存路径，例如：
-            "../outputs/2/training_history.png"
+            "../outputs/1/training_history.png"
             设为 None 时不保存。
 
         show:
@@ -469,132 +483,127 @@ def plot_training_history(
     )
 
     # ========================================================
-    # 左图：训练结果
+    # 左图：Loss
     # ========================================================
-    train_loss_axis = axes[0]
-    train_accuracy_axis = train_loss_axis.twinx()
+    loss_axis = axes[0]
 
-    train_loss_line = train_loss_axis.plot(
+    loss_axis.plot(
         epochs,
         history["train_loss"],
         color="tab:red",
-        marker="o",
-        markersize=3,
         linewidth=1.8,
         label="Train Loss",
     )
 
-    train_accuracy_line = train_accuracy_axis.plot(
-        epochs,
-        history["train_accuracy"],
-        color="tab:blue",
-        marker="s",
-        markersize=3,
-        linewidth=1.8,
-        label="Train Accuracy",
-    )
-
-    train_loss_axis.set_title("Training Results")
-    train_loss_axis.set_xlabel("Epoch")
-    train_loss_axis.set_ylabel(
-        "Loss",
-        color="tab:red",
-    )
-    train_accuracy_axis.set_ylabel(
-        "Accuracy",
-        color="tab:blue",
-    )
-    train_accuracy_axis.set_ylim(0.0, 1.0)
-
-    train_loss_axis.tick_params(
-        axis="y",
-        labelcolor="tab:red",
-    )
-    train_accuracy_axis.tick_params(
-        axis="y",
-        labelcolor="tab:blue",
-    )
-
-    train_loss_axis.grid(
-        True,
-        linestyle="--",
-        alpha=0.3,
-    )
-
-    train_lines = (
-        train_loss_line
-        + train_accuracy_line
-    )
-
-    train_loss_axis.legend(
-        train_lines,
-        [line.get_label() for line in train_lines],
-        loc="best",
-    )
-
-    # ========================================================
-    # 右图：验证结果
-    # ========================================================
-    val_loss_axis = axes[1]
-    val_accuracy_axis = val_loss_axis.twinx()
-
-    val_loss_line = val_loss_axis.plot(
+    loss_axis.plot(
         epochs,
         history["val_loss"],
         color="tab:orange",
-        marker="o",
-        markersize=3,
         linewidth=1.8,
         label="Validation Loss",
     )
 
-    val_accuracy_line = val_accuracy_axis.plot(
-        epochs,
-        history["val_accuracy"],
-        color="tab:green",
-        marker="s",
-        markersize=3,
-        linewidth=1.8,
-        label="Validation Accuracy",
+    minimum_val_loss_index = min(
+        range(num_epochs),
+        key=lambda index: history["val_loss"][index],
     )
+    minimum_val_loss_epoch = minimum_val_loss_index + 1
+    minimum_val_loss = history["val_loss"][minimum_val_loss_index]
 
-    val_loss_axis.set_title("Validation Results")
-    val_loss_axis.set_xlabel("Epoch")
-    val_loss_axis.set_ylabel(
-        "Loss",
+    loss_axis.scatter(
+        minimum_val_loss_epoch,
+        minimum_val_loss,
         color="tab:orange",
+        s=45,
+        zorder=5,
     )
-    val_accuracy_axis.set_ylabel(
-        "Accuracy",
-        color="tab:green",
-    )
-    val_accuracy_axis.set_ylim(0.0, 1.0)
-
-    val_loss_axis.tick_params(
-        axis="y",
-        labelcolor="tab:orange",
-    )
-    val_accuracy_axis.tick_params(
-        axis="y",
-        labelcolor="tab:green",
+    loss_axis.annotate(
+        f"Best val loss: {minimum_val_loss:.3f}\n"
+        f"Epoch {minimum_val_loss_epoch}",
+        xy=(minimum_val_loss_epoch, minimum_val_loss),
+        xytext=(-85, 28),
+        textcoords="offset points",
+        arrowprops={"arrowstyle": "->", "color": "tab:orange"},
+        fontsize=9,
     )
 
-    val_loss_axis.grid(
+    loss_axis.set_title("Loss")
+    loss_axis.set_xlabel("Epoch")
+    loss_axis.set_ylabel("Cross-entropy Loss")
+    loss_axis.grid(
         True,
         linestyle="--",
         alpha=0.3,
     )
+    loss_axis.legend(loc="best")
 
-    val_lines = (
-        val_loss_line
-        + val_accuracy_line
+    # ========================================================
+    # 右图：Accuracy
+    # ========================================================
+    accuracy_axis = axes[1]
+
+    accuracy_axis.plot(
+        epochs,
+        history["train_accuracy"],
+        color="tab:blue",
+        linewidth=1.8,
+        label="Train Accuracy",
     )
 
-    val_loss_axis.legend(
-        val_lines,
-        [line.get_label() for line in val_lines],
-        loc="best",
+    accuracy_axis.plot(
+        epochs,
+        history["val_accuracy"],
+        color="tab:green",
+        linewidth=1.8,
+        label="Validation Accuracy",
     )
+
+    best_val_accuracy_index = max(
+        range(num_epochs),
+        key=lambda index: history["val_accuracy"][index],
+    )
+    best_val_accuracy_epoch = best_val_accuracy_index + 1
+    best_val_accuracy = history["val_accuracy"][best_val_accuracy_index]
+
+    accuracy_axis.scatter(
+        best_val_accuracy_epoch,
+        best_val_accuracy,
+        color="tab:green",
+        s=45,
+        zorder=5,
+    )
+    accuracy_axis.annotate(
+        f"Best val accuracy: {best_val_accuracy:.1%}\n"
+        f"Epoch {best_val_accuracy_epoch}",
+        xy=(best_val_accuracy_epoch, best_val_accuracy),
+        xytext=(-115, -18),
+        textcoords="offset points",
+        arrowprops={"arrowstyle": "->", "color": "tab:green"},
+        fontsize=9,
+    )
+
+    maximum_accuracy = max(
+        max(history["train_accuracy"]),
+        max(history["val_accuracy"]),
+    )
+    accuracy_upper_limit = min(
+        1.0,
+        max(0.1, maximum_accuracy * 1.1),
+    )
+
+    accuracy_axis.set_title("Accuracy")
+    accuracy_axis.set_xlabel("Epoch")
+    accuracy_axis.set_ylabel("Accuracy")
+    accuracy_axis.set_ylim(0.0, accuracy_upper_limit)
+    accuracy_axis.yaxis.set_major_formatter(
+        PercentFormatter(1.0)
+    )
+    accuracy_axis.grid(
+        True,
+        linestyle="--",
+        alpha=0.3,
+    )
+    accuracy_axis.legend(loc="best")
 
     figure.suptitle(
         "SNN Training History",
