@@ -24,7 +24,8 @@ RAW_DIR = EXTRACT_ROOT / "STEMNIST Dataset" / "RawCharacters"
 
 # 预期的ZIP文件MD5值，用于验证文件完整性
 EXPECTED_MD5 = "6ca4638b2f95bf34f59873ab62399bd8"   
-EXPECTED_SHAPE = (240, 16, 16)
+RAW_TIME_STEPS = 240
+EXPECTED_SHAPE = (RAW_TIME_STEPS, 16, 16)
 
 # 标签顺序一旦确定，之后不能改变
 LABELS = tuple("ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789")
@@ -49,6 +50,131 @@ CACHE_DIR = DATA_ROOT / "cache"
 TENSOR_CACHE_PATH = CACHE_DIR / "stemnist_240_u8.pt"
 MANIFEST_PATH = CACHE_DIR / "manifest_cache.json"
 SPLIT_PATH = CACHE_DIR / "split_seed42.json"
+
+
+def validate_time_steps(time_steps):
+    """检查目标时间步数是否支持等宽时间聚合。"""
+
+    if isinstance(time_steps, bool) or not isinstance(time_steps, int):
+        raise TypeError("time_steps 必须是整数")
+
+    if not 1 <= time_steps <= RAW_TIME_STEPS:
+        raise ValueError(
+            f"time_steps 必须位于 [1, {RAW_TIME_STEPS}]，"
+            f"实际为 {time_steps}"
+        )
+
+    if RAW_TIME_STEPS % time_steps != 0:
+        raise ValueError(
+            f"当前实现要求 time_steps 能整除 {RAW_TIME_STEPS}，"
+            f"实际为 {time_steps}"
+        )
+
+    return time_steps
+
+
+def aggregate_cached_pressure_time(
+    pressure,
+    time_steps,
+    chunk_size=256,
+):
+    """
+    将缓存的压力张量从 240 帧等宽聚合到目标时间步数。
+
+    原始缓存始终保持 [N,240,1,16,16]、uint8。聚合在缓存
+    载入后执行一次，而不是在每个 epoch 的 __getitem__ 中重复执行。
+    返回值仍为 uint8，以控制 CPU 内存和传输开销。
+    """
+
+    time_steps = validate_time_steps(time_steps)
+
+    expected_sample_shape = (
+        RAW_TIME_STEPS,
+        1,
+        16,
+        16,
+    )
+
+    if pressure.ndim != 5:
+        raise ValueError(
+            "缓存压力张量必须是 [N,T,C,H,W] 五维张量，"
+            f"实际为 {tuple(pressure.shape)}"
+        )
+
+    if tuple(pressure.shape[1:]) != expected_sample_shape:
+        raise ValueError(
+            f"缓存单样本形状必须是 {expected_sample_shape}，"
+            f"实际为 {tuple(pressure.shape[1:])}"
+        )
+
+    if pressure.dtype != torch.uint8:
+        raise TypeError(
+            "缓存压力类型必须是 torch.uint8，"
+            f"实际为 {pressure.dtype}"
+        )
+
+    if time_steps == RAW_TIME_STEPS:
+        return pressure
+
+    if isinstance(chunk_size, bool) or not isinstance(chunk_size, int):
+        raise TypeError("chunk_size 必须是整数")
+
+    if chunk_size <= 0:
+        raise ValueError("chunk_size 必须大于 0")
+
+    group_size = RAW_TIME_STEPS // time_steps
+    sample_count = pressure.shape[0]
+
+    aggregated_pressure = torch.empty(
+        (
+            sample_count,
+            time_steps,
+            1,
+            16,
+            16,
+        ),
+        dtype=torch.uint8,
+    )
+
+    print(
+        f"将压力缓存从 {RAW_TIME_STEPS} 步聚合为 "
+        f"{time_steps} 步……"
+    )
+
+    # 分块计算，避免一次把整个 451 MiB 缓存转换为 int32。
+    for start in range(0, sample_count, chunk_size):
+        stop = min(start + chunk_size, sample_count)
+        current_count = stop - start
+
+        pressure_sums = (
+            pressure[start:stop]
+            .to(torch.int32)
+            .reshape(
+                current_count,
+                time_steps,
+                group_size,
+                1,
+                16,
+                16,
+            )
+            .sum(dim=2)
+        )
+
+        aggregated_pressure[start:stop].copy_(
+            torch.div(
+                pressure_sums + group_size // 2,
+                group_size,
+                rounding_mode="floor",
+            ).to(torch.uint8)
+        )
+
+    print(
+        "时间聚合完成：",
+        aggregated_pressure.shape,
+        aggregated_pressure.dtype,
+    )
+
+    return aggregated_pressure
 
 # ============================================================
 # 原始数据检查
@@ -197,7 +323,7 @@ def build_cache_if_needed(force_rebuild=False):
     pressure = torch.empty(
         (
             EXPECTED_SAMPLE_COUNT,
-            240,
+            RAW_TIME_STEPS,
             1,
             16,
             16,
@@ -313,7 +439,7 @@ def load_cached_data(force_rebuild=False):
 
     expected_cache_shape = (
         EXPECTED_SAMPLE_COUNT,
-        240,
+        RAW_TIME_STEPS,
         1,
         16,
         16,
@@ -523,12 +649,10 @@ class STEMNISTDataset(Dataset):
         pressure,
         labels,
         indices,
-        sample_ids,
     ):
         self.pressure = pressure
         self.labels = labels
         self.indices = indices
-        self.sample_ids = sample_ids
 
     def __len__(self):
         return len(self.indices)
@@ -549,7 +673,7 @@ class STEMNISTDataset(Dataset):
         x = self.pressure[global_index]
 
         y = self.labels[global_index]
-        return x, y, global_index
+        return x, y
 
 
 # ============================================================
@@ -585,20 +709,21 @@ def _make_loader_arguments(
 def make_dataloaders(
     time_steps=240,
     batch_size=64,
-    train_workers=4,
-    eval_workers=2,
+    train_workers=0,
+    eval_workers=0,
     pin_memory=True,
-    force_rebuild=False,
 ):
-    if time_steps != 240:
-        raise ValueError(
-            "当前缓存版本只支持 time_steps=240"
-        )
+    time_steps = validate_time_steps(time_steps)
 
     pressure, labels, manifest = (
         load_cached_data(
-            force_rebuild=force_rebuild
+            force_rebuild=False
         )
+    )
+
+    pressure = aggregate_cached_pressure_time(
+        pressure,
+        time_steps=time_steps,
     )
 
     split_indices = create_or_load_splits(
@@ -606,30 +731,22 @@ def make_dataloaders(
         labels,
     )
 
-    sample_ids = [
-        record["sample_id"]
-        for record in manifest
-    ]
-
     train_dataset = STEMNISTDataset(
         pressure=pressure,
         labels=labels,
         indices=split_indices["train"],
-        sample_ids=sample_ids,
     )
 
     val_dataset = STEMNISTDataset(
         pressure=pressure,
         labels=labels,
         indices=split_indices["val"],
-        sample_ids=sample_ids,
     )
 
     test_dataset = STEMNISTDataset(
         pressure=pressure,
         labels=labels,
         indices=split_indices["test"],
-        sample_ids=sample_ids,
     )
 
     generator = torch.Generator().manual_seed(42)
@@ -690,11 +807,11 @@ def make_dataloaders(
 # 测试数据加载器是否正常工作，并打印一些信息
 if __name__ == "__main__":
     train_loader, val_loader, test_loader = make_dataloaders(
-        time_steps=240,
+        time_steps=120,
         batch_size=64,
     )
 
-    x, y, sample_ids = next(iter(train_loader))
+    x, y = next(iter(train_loader))
 
     print(
         "划分大小：",
@@ -704,7 +821,6 @@ if __name__ == "__main__":
     )
     print("DataLoader x：", x.shape, x.dtype)
     print("DataLoader y：", y.shape, y.dtype)
-    print("样本 ID 示例：", sample_ids[:3])
 
     # DataLoader 输出是 batch 优先：
     # [N,T,C,H,W]

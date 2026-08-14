@@ -23,7 +23,8 @@ RAW_DIR = EXTRACT_ROOT / "STEMNIST Dataset" / "RawCharacters"
 
 # 预期的ZIP文件MD5值，用于验证文件完整性
 EXPECTED_MD5 = "6ca4638b2f95bf34f59873ab62399bd8"   
-EXPECTED_SHAPE = (240, 16, 16)
+RAW_TIME_STEPS = 240
+EXPECTED_SHAPE = (RAW_TIME_STEPS, 16, 16)
 
 # 标签顺序一旦确定，之后不能改变
 LABELS = tuple("ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789")
@@ -31,7 +32,91 @@ LABEL_TO_INDEX = {
     label: index
     for index, label in enumerate(LABELS)
 }
+# 检查时间步长是否合规
+def validate_time_steps(time_steps):
+    """
+    检查目标时间步数。
 
+    当前实现使用等宽时间窗口平均，因此要求
+    time_steps 能够整除原始的 240 帧。
+    """
+
+    if isinstance(time_steps, bool) or not isinstance(time_steps, int):
+        raise TypeError("time_steps 必须是整数")
+
+    if not 1 <= time_steps <= RAW_TIME_STEPS:
+        raise ValueError(
+            f"time_steps 必须位于 [1, {RAW_TIME_STEPS}]，"
+            f"实际为 {time_steps}"
+        )
+
+    if RAW_TIME_STEPS % time_steps != 0:
+        raise ValueError(
+            f"当前实现要求 time_steps 能整除 {RAW_TIME_STEPS}，"
+            f"实际为 {time_steps}"
+        )
+
+    return time_steps
+
+# 将压力数据在时间维度上进行聚合
+def aggregate_pressure_time(pressure, time_steps):
+    """
+    将原始的 [240,16,16] 压力序列聚合为
+    [time_steps,16,16]。
+
+    例如 time_steps=120 时，每相邻两帧取平均：
+
+        [240,16,16]
+            ->
+        [120,2,16,16]
+            ->
+        [120,16,16]
+
+    聚合后四舍五入并转回 uint8，以维持当前数据加载器
+    的低内存设计。
+    """
+
+    time_steps = validate_time_steps(time_steps)
+
+    if tuple(pressure.shape) != EXPECTED_SHAPE:
+        raise ValueError(
+            f"压力数组形状必须是 {EXPECTED_SHAPE}，"
+            f"实际为 {tuple(pressure.shape)}"
+        )
+
+    if pressure.dtype != np.uint8:
+        raise TypeError(
+            "压力数组类型必须是 np.uint8，"
+            f"实际为 {pressure.dtype}"
+        )
+
+    if time_steps == RAW_TIME_STEPS:
+        return pressure
+
+    group_size = RAW_TIME_STEPS // time_steps
+
+    # 先转换为 uint32，避免多帧相加时 uint8 溢出。
+    pressure_sums = (
+        pressure.astype(np.uint32, copy=False)
+        .reshape(
+            time_steps,
+            group_size,
+            16,
+            16,
+        )
+        .sum(axis=1)
+    )
+
+    # 整数四舍五入：
+    # time_steps=120 时，等价于 (frame_0 + frame_1 + 1) // 2。
+    aggregated_pressure = (
+        (pressure_sums + group_size // 2)
+        // group_size
+    ).astype(np.uint8)
+
+    return aggregated_pressure
+
+###########################################################################
 
 # 根据Zip数据文件计算其MD5值，用于验证文件完整性
 def calculate_md5(path):
@@ -154,19 +239,14 @@ class STEMNISTDataset(Dataset):
         records,
         time_steps=240,
     ):
-        if time_steps != 240:
-            raise ValueError(
-                "time_steps 目前只支持 240"
-            )
-
         self.records = records
-        self.time_steps = time_steps
+        self.time_steps = validate_time_steps(time_steps)
 
         sample_count = len(records)
         # 保持 uint8：
-        # 总内存占用约 451 MiB
+        # 240 步约占 451 MiB，120 步约占 225 MiB
         self.pressures = torch.empty(
-            (sample_count, 240, 1, 16, 16),
+            (sample_count, self.time_steps, 1, 16, 16),
             dtype=torch.uint8,
         )
 
@@ -179,10 +259,12 @@ class STEMNISTDataset(Dataset):
 
         for index, record in enumerate(records):
             with h5py.File(record["path"], "r") as file:
-                pressure = file["pressure_data"][...]
+                raw_pressure = file["pressure_data"][...]
+    
+            pressure = aggregate_pressure_time(raw_pressure, self.time_steps)
 
-            # pressure: [240,16,16]
-            # self.pressures[index]: [240,1,16,16]
+            # pressure: [self.time_steps,16,16]
+            # self.pressures[index]: [self.time_steps,1,16,16]
             self.pressures[index, :, 0].copy_(
                 torch.from_numpy(pressure)
             )
@@ -290,7 +372,7 @@ def make_dataloaders(
 # 测试数据加载器是否正常工作，并打印一些信息
 if __name__ == "__main__":
     train_loader, val_loader, test_loader = make_dataloaders(
-        time_steps=240,
+        time_steps=120,
         batch_size=64,
     )
 
