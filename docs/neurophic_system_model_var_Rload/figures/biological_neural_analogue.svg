@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="2400" height="1200" viewBox="0 0 2400 1200" role="img">
+
+  <defs>
+    <marker id="arrow-dark" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M 0 0 L 12 6 L 0 12 z" fill="#26313b"/>
+    </marker>
+    <marker id="arrow-teal" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M 0 0 L 12 6 L 0 12 z" fill="#25889a"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M 0 0 L 12 6 L 0 12 z" fill="#dc6843"/>
+    </marker>
+    <filter id="soft-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#1d2933" flood-opacity="0.10"/>
+    </filter>
+    <style>
+      text { font-family: Arial, "Helvetica Neue", Helvetica, sans-serif; fill: #26313b; }
+      .title { font-size: 42px; font-weight: 800; letter-spacing: -0.6px; }
+      .subtitle { font-size: 20px; fill: #637080; }
+      .section { font-size: 25px; font-weight: 800; letter-spacing: 0.8px; }
+      .label { font-size: 22px; font-weight: 600; }
+      .body { font-size: 20px; }
+      .small { font-size: 17px; fill: #566576; }
+      .tiny { font-size: 15px; fill: #667687; }
+      .formula { font-family: "Times New Roman", Times, serif; font-size: 20px; font-style: italic; }
+      .wire { fill: none; stroke: #26313b; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+      .wire-thin { fill: none; stroke: #26313b; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
+      .guide { fill: none; stroke: #9aabba; stroke-width: 2.5; stroke-dasharray: 8 9; }
+      .orange { stroke: #dc6843; }
+      .teal { stroke: #25889a; }
+      .blue { stroke: #496f95; }
+      .fill-orange { fill: #dc6843; }
+      .fill-orange-light { fill: #f9e6df; }
+      .fill-teal { fill: #25889a; }
+      .fill-teal-light { fill: #e1f1f3; }
+      .fill-blue { fill: #496f95; }
+      .fill-blue-light { fill: #e8eef4; }
+      .fill-ink { fill: #26313b; }
+      .fill-muted { fill: #eef2f5; }
+      .node { fill: #26313b; }
+      .card { fill: #ffffff; stroke: #d8e0e7; stroke-width: 2.5; }
+      .module { fill: #ffffff; stroke: #496f95; stroke-width: 4; }
+      .callout { fill: #fbfcfd; stroke: #c9d4dd; stroke-width: 2.5; }
+    </style>
+  </defs>
+
+  <rect width="2400" height="1200" fill="#ffffff"/>
+  
+  <text x="70" y="70" class="title">Biological neural analogue</text>
+  <text x="70" y="108" class="subtitle">Functional correspondence to the neuromorphic circuit — not structural homology</text>
+
+  
+    <text x="70" y="154" class="section">PRESYNAPTIC NEURON</text>
+    <line x1="70" y1="174" x2="225" y2="174" stroke="#dc6843" stroke-width="8" stroke-linecap="round"/>
+  
+    <text x="700" y="154" class="section">CHEMICAL SYNAPSE</text>
+    <line x1="700" y1="174" x2="855" y2="174" stroke="#25889a" stroke-width="8" stroke-linecap="round"/>
+  
+    <text x="1040" y="154" class="section">DENDRITIC INTEGRATION</text>
+    <line x1="1040" y1="174" x2="1195" y2="174" stroke="#496f95" stroke-width="8" stroke-linecap="round"/>
+  
+    <text x="1800" y="154" class="section">POSTSYNAPTIC NEURON</text>
+    <line x1="1800" y1="174" x2="1955" y2="174" stroke="#dc6843" stroke-width="8" stroke-linecap="round"/>
+
+  <!-- Sensory input -->
+  <rect x="76" y="307" width="172" height="84" rx="19" class="fill-orange-light"/>
+  <text x="162" y="335" text-anchor="middle" class="small" font-weight="700">Sensory drive</text>
+  <path d="M 102 367 L 124 367 L 124 345 L 146 345 L 146 373 L 170 373 L 170 350 L 194 350 L 194 367 L 221 367" fill="none" stroke="#dc6843" stroke-width="4" stroke-linejoin="round"/>
+  <line x1="248" y1="349" x2="292" y2="413" stroke="#26313b" stroke-width="4" marker-end="url(#arrow-dark)"/>
+
+  <!-- Presynaptic neuron -->
+  <path d="M 342 497 C 309 461 303 419 290 390 M 337 510 C 290 515 259 545 227 568 M 353 525 C 322 565 322 605 304 636 M 360 474 C 337 428 345 386 337 351 M 365 541 C 350 587 361 624 350 666" fill="none" stroke="#dc6843" stroke-width="9" stroke-linecap="round"/>
+  <path d="M 290 390 C 267 369 257 342 247 321 M 290 390 C 274 406 252 412 230 416 M 227 568 C 199 563 176 575 154 591 M 227 568 C 209 544 193 532 170 522 M 304 636 C 280 659 261 675 251 701 M 337 351 C 319 326 319 301 320 279 M 350 666 C 338 695 341 723 347 750" fill="none" stroke="#dc6843" stroke-width="6" stroke-linecap="round"/>
+  <ellipse cx="455" cy="505" rx="115" ry="104" fill="#fff8f5" stroke="#dc6843" stroke-width="10"/>
+  <circle cx="444" cy="507" r="42" fill="#f2c8b9" opacity="0.65"/>
+  <path d="M 548 488 C 615 455 664 456 715 476 C 754 491 774 501 808 503" fill="none" stroke="#dc6843" stroke-width="15" stroke-linecap="round"/>
+  <path d="M 565 475 C 634 424 701 420 765 448" fill="none" stroke="#f4a084" stroke-width="4" stroke-linecap="round"/>
+  <text x="456" y="500" text-anchor="middle" class="label">membrane</text>
+  <text x="456" y="529" text-anchor="middle" class="small">integration</text>
+  <path d="M 380 624 C 427 657 488 659 538 626" fill="none" stroke="#9aabba" stroke-width="3" marker-end="url(#arrow-dark)"/>
+  <text x="458" y="694" text-anchor="middle" class="small">threshold → action potential</text>
+  
+    <path d="M 610 389 l 14.76 0 l 6.56 -26.24 l 9.02 50.839999999999996 l 9.84 -41 l 7.38 16.4 l 18.04 0" fill="none" stroke="#dc6843" stroke-width="3.69" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="674" y="349" text-anchor="middle" class="small">presynaptic spike</text>
+
+  <!-- Presynaptic terminal -->
+  <path d="M 802 459 C 851 428 895 449 901 494 C 907 535 875 572 827 557 C 790 545 777 486 802 459 Z" fill="#f9e6df" stroke="#dc6843" stroke-width="8"/>
+  <circle cx="830" cy="481" r="10" class="fill-teal"/>
+  <circle cx="862" cy="493" r="10" class="fill-teal"/>
+  <circle cx="835" cy="526" r="10" class="fill-teal"/>
+  <text x="836" y="609" text-anchor="middle" class="small">axon terminal</text>
+
+  <!-- Synaptic cleft, transmitters and receptor membrane -->
+  <path d="M 918 411 C 942 445 936 481 950 511 C 963 540 957 576 936 608" fill="none" stroke="#25889a" stroke-width="8" stroke-linecap="round"/>
+  <path d="M 984 404 C 1012 438 1002 474 1019 508 C 1034 539 1024 578 1001 616" fill="none" stroke="#25889a" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="927" cy="463" r="8" class="fill-teal"/>
+  <circle cx="955" cy="484" r="7" class="fill-teal"/>
+  <circle cx="939" cy="526" r="8" class="fill-teal"/>
+  <circle cx="966" cy="552" r="7" class="fill-teal"/>
+  <line x1="927" y1="463" x2="966" y2="465" stroke="#25889a" stroke-width="2.5" marker-end="url(#arrow-teal)"/>
+  <line x1="939" y1="526" x2="977" y2="530" stroke="#25889a" stroke-width="2.5" marker-end="url(#arrow-teal)"/>
+  <path d="M 981 450 l 16 0 l 0 27 l -16 0 M 996 513 l 17 0 l 0 28 l -17 0 M 978 568 l 16 0 l 0 27 l -16 0" fill="none" stroke="#26313b" stroke-width="4" stroke-linejoin="round"/>
+  <text x="959" y="673" text-anchor="middle" class="small">neurotransmitter · cleft · receptors</text>
+  <rect x="714" y="742" width="300" height="110" rx="16" class="fill-teal-light"/>
+  <text x="864" y="777" text-anchor="middle" class="small" font-weight="700">Synaptic conductance dynamics</text>
+  <text x="864" y="813" text-anchor="middle" class="body">slow · fast · medium kinetics</text>
+  <path class="guide" d="M 892 742 C 908 697 923 649 942 600"/>
+
+  <!-- Postsynaptic dendrite -->
+  <path d="M 1005 508 C 1100 470 1178 476 1264 507 C 1342 535 1417 514 1495 497 C 1574 480 1639 495 1715 521" fill="none" stroke="#496f95" stroke-width="20" stroke-linecap="round"/>
+  <path d="M 1110 476 C 1097 430 1070 408 1041 382 M 1175 485 C 1170 433 1189 399 1217 372 M 1296 515 C 1268 568 1240 591 1215 614 M 1409 516 C 1428 563 1464 591 1494 615 M 1534 492 C 1557 453 1585 432 1620 413" fill="none" stroke="#496f95" stroke-width="10" stroke-linecap="round"/>
+  <path d="M 1041 382 C 1021 359 1008 337 1001 312 M 1217 372 C 1233 343 1246 319 1265 297 M 1215 614 C 1195 641 1183 666 1176 694 M 1494 615 C 1513 646 1527 666 1552 686 M 1620 413 C 1641 386 1651 357 1656 329" fill="none" stroke="#496f95" stroke-width="6" stroke-linecap="round"/>
+
+  <!-- TIA functional analogue callout -->
+  <rect x="1042" y="686" width="286" height="196" rx="20" class="module" filter="url(#soft-shadow)"/>
+  <text x="1185" y="724" text-anchor="middle" class="label">Dendritic integration</text>
+  <line x1="1096" y1="753" x2="1096" y2="817" stroke="#25889a" stroke-width="4" marker-end="url(#arrow-teal)"/>
+  <text x="1114" y="788" class="formula">I<tspan baseline-shift="sub" font-size="14">syn</tspan></text>
+  <line x1="1170" y1="752" x2="1170" y2="838" stroke="#26313b" stroke-width="4"/>
+  <line x1="1145" y1="774" x2="1195" y2="774" stroke="#26313b" stroke-width="4"/>
+  <line x1="1145" y1="797" x2="1195" y2="797" stroke="#26313b" stroke-width="4"/>
+  <path d="M 1230 792 L 1237.0 782 L 1244.0 802 L 1251.0 782 L 1258.0 802 L 1265.0 782 L 1272 792" fill="none" stroke="#496f95" stroke-width="4"/>
+  <text x="1208" y="846" text-anchor="middle" class="small">membrane RC</text>
+  <text x="1185" y="869" text-anchor="middle" class="tiny">current → EPSP · integration · decay</text>
+  <path class="guide" d="M 1185 686 C 1180 628 1182 563 1190 493"/>
+
+  <!-- Level-shift functional analogue callout -->
+  <rect x="1372" y="686" width="288" height="196" rx="20" class="module" filter="url(#soft-shadow)"/>
+  <text x="1516" y="724" text-anchor="middle" class="label">Excitability bias</text>
+  <path d="M 1418 814 C 1452 814 1465 760 1496 760 C 1527 760 1541 814 1581 814" fill="none" stroke="#496f95" stroke-width="4"/>
+  <line x1="1418" y1="820" x2="1584" y2="820" stroke="#9aabba" stroke-width="2" stroke-dasharray="6 6"/>
+  <line x1="1500" y1="744" x2="1500" y2="839" stroke="#dc6843" stroke-width="3" stroke-dasharray="6 6"/>
+  <text x="1516" y="846" text-anchor="middle" class="small">resting potential · gain · polarity</text>
+  <text x="1516" y="870" text-anchor="middle" class="tiny">sets depolarization relative to threshold</text>
+  <path class="guide" d="M 1515 686 C 1516 630 1530 555 1550 488"/>
+
+  <!-- Postsynaptic soma, hillock and axon -->
+  <path d="M 1710 522 C 1728 487 1736 448 1766 419 C 1803 383 1871 377 1920 402 C 1970 427 1983 485 1968 533 C 1955 578 1910 608 1865 610 C 1813 613 1750 580 1710 522 Z" fill="#fff8f5" stroke="#dc6843" stroke-width="10"/>
+  <circle cx="1858" cy="496" r="45" fill="#f2c8b9" opacity="0.65"/>
+  <path d="M 1965 502 C 2009 484 2042 487 2076 509 C 2114 534 2131 533 2170 531 C 2203 529 2235 532 2280 532" fill="none" stroke="#dc6843" stroke-width="15" stroke-linecap="round"/>
+  <path d="M 2017 488 C 2031 458 2044 446 2062 431" fill="none" stroke="#f4a084" stroke-width="4"/>
+  <text x="1859" y="491" text-anchor="middle" class="label">soma</text>
+  <text x="1859" y="521" text-anchor="middle" class="small">threshold firing</text>
+  <text x="2027" y="585" text-anchor="middle" class="small">axon hillock</text>
+  
+    <path d="M 2144 418 l 16.2 0 l 7.2 -28.8 l 9.9 55.800000000000004 l 10.8 -45 l 8.1 18 l 19.8 0" fill="none" stroke="#dc6843" stroke-width="4.05" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="2201" y="385" text-anchor="middle" class="small">postsynaptic action potential</text>
+  <circle cx="2300" cy="532" r="13" fill="#ffffff" stroke="#26313b" stroke-width="4"/>
+  <text x="2260" y="603" text-anchor="middle" class="formula">V<tspan baseline-shift="sub" font-size="14">out</tspan>(t)</text>
+
+  <!-- Biological process labels -->
+  <rect x="278" y="759" width="342" height="92" rx="16" class="fill-orange-light"/>
+  <text x="449" y="795" text-anchor="middle" class="small" font-weight="700">Presynaptic computation</text>
+  <text x="449" y="827" text-anchor="middle" class="body">integrate → threshold → fire</text>
+  <path class="guide" d="M 449 759 C 453 707 456 653 457 609"/>
+  <rect x="1751" y="738" width="430" height="113" rx="16" class="fill-orange-light"/>
+  <text x="1966" y="775" text-anchor="middle" class="small" font-weight="700">Postsynaptic spike generation</text>
+  <text x="1966" y="808" text-anchor="middle" class="body">EPSP crosses threshold at the axon hillock</text>
+  <path class="guide" d="M 1956 738 C 1980 670 2010 612 2041 563"/>
+
+  <!-- Signal flow and legend -->
+  <path d="M 126 966 L 2290 966" fill="none" stroke="#aab7c2" stroke-width="3" marker-end="url(#arrow-dark)"/>
+  <text x="1200" y="949" text-anchor="middle" class="small">information flow</text>
+  <rect x="635" y="1028" width="16" height="16" rx="3" class="fill-orange"/>
+  <text x="662" y="1043" class="small">excitable neuron</text>
+  <rect x="912" y="1028" width="16" height="16" rx="3" class="fill-teal"/>
+  <text x="939" y="1043" class="small">chemical synapse</text>
+  <rect x="1190" y="1028" width="16" height="16" rx="3" class="fill-blue"/>
+  <text x="1217" y="1043" class="small">postsynaptic integration and bias</text>
+  <text x="70" y="1124" class="tiny">Functional mapping: NbOₓ oscillators emulate excitable firing; the analog interface emulates membrane-level signal processing, not a distinct anatomical organ.</text>
+</svg>

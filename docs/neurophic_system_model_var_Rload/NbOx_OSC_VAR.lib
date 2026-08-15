@@ -1,0 +1,58 @@
+* Variable-Rload numerically stable NbOx oscillator
+* Pins:
+*   1 VIN
+*   2 OUTPUT
+*   3 GND
+*   4 PCTRL
+*
+* PCTRL numerically represents the raw pressure ADC value.
+* PCTRL <= 75: Rload = 1T, approximately open circuit.
+* PCTRL > 75 : Rload = 900k/(PCTRL-75), limited to 5k...1T.
+
+.SUBCKT NbOx_OSC_VAR VIN OUTPUT GND PCTRL PARAMS:
++ VH=1.676 VL=1.127
++ Rin=89213.44 Rme=806
++ Cparal=1u
++ A=1000000 Rstate=1 Cstate=100n
+
+* Renamed functions avoid conflicts with NbOx_OSC_stable.lib.
+.FUNC Vpos_var()=
++ VL+(VH-VL)*V(cap,GND)
+
+.FUNC Vcompare_var()=
++ 0.5*(1+tanh(2*A*(V(pos,GND)-V(nega,GND))))
+
+.FUNC Rnbox_var()=
++ Rin*Rme/(Rin*abs(1-V(cap,GND))+Rme*V(cap,GND))
+
+* Hysteresis threshold and state.
+B1 pos GND V=Vpos_var()
+B2 nega GND V=V(OUTPUT,GND)
+B3 state GND V=Vcompare_var()
+
+RSTATE state cap {Rstate}
+CSTATE cap nbias {Cstate} IC=1
+VBIAS nbias GND 1
+
+* NbOx resistance.
+B4 resis GND V=Rnbox_var()
+RDEVICE OUTPUT GND R=V(resis,GND)
+
+* Pressure-controlled load resistance.
+*
+* max(...,1u) prevents division by zero.
+* 1T approximates open circuit.
+* 5k is the minimum load resistance.
+BLOAD VIN OUTPUT R=if(
++ V(PCTRL,GND)<=75,
++ 1T,
++ limit(
++   900k/max(V(PCTRL,GND)-75,1u),
++   5k,
++   1T
++ )
++ )
+
+CPAR_OUT OUTPUT GND {Cparal}
+
+.ENDS NbOx_OSC_VAR

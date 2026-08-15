@@ -5,23 +5,6 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 from matplotlib.ticker import PercentFormatter
 
-# 对原始ADC压力进行固定物理映射（归一化）
-ADC_BASELINE = 75.0
-ADC_SPAN = 255.0 - ADC_BASELINE
-
-
-def preprocess_pressure(inputs):
-    """
-    将 STEMNIST 原始 ADC 压力从约 [75, 255]
-    映射到 [0, 1]。
-
-    这是固定量程转换，不使用验证集或测试集统计量，
-    因此不存在数据泄漏。
-    """
-    return (
-        (inputs - ADC_BASELINE) / ADC_SPAN
-    ).clamp(0.0, 1.0)
-
 
 def train_epoch(model, train_loader, criterion, optimizer, DEVICE, epoch=None):
     model.train()
@@ -55,8 +38,6 @@ def train_epoch(model, train_loader, criterion, optimizer, DEVICE, epoch=None):
             dtype=torch.float32,
             non_blocking=True,
         )
-        # 归一化
-        inputs = preprocess_pressure(inputs)
 
         labels = labels.to(
             DEVICE  ,
@@ -171,8 +152,6 @@ def validate_epoch(
                 dtype=torch.float32,
                 non_blocking=True,
             )
-            # 归一化
-            inputs = preprocess_pressure(inputs)
 
             labels = labels.to(
                 device,

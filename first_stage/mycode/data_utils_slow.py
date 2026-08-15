@@ -32,6 +32,147 @@ LABEL_TO_INDEX = {
     label: index
     for index, label in enumerate(LABELS)
 }
+
+
+class NormalizePressure:
+    """使用训练集估计的逐传感器基线归一化压力序列。
+
+    ``baseline`` 的形状为 ``[1,1,16,16]``，可以广播到单个样本的
+    ``[T,1,16,16]``。归一化后的数据为 float32，范围为 ``[0,1]``。
+    """
+
+    def __init__(self, baseline, adc_max=255.0):
+        baseline = torch.as_tensor(
+            baseline,
+            dtype=torch.float32,
+        ).detach().clone()
+
+        if tuple(baseline.shape) != (1, 1, 16, 16):
+            raise ValueError(
+                "baseline 形状必须是 [1,1,16,16]，"
+                f"实际为 {tuple(baseline.shape)}"
+            )
+
+        if not torch.isfinite(baseline).all():
+            raise ValueError("baseline 中存在非有限值")
+
+        self.baseline = baseline
+        self.adc_max = float(adc_max)
+        self.span = self.adc_max - self.baseline
+
+        if (self.span <= 0.0).any():
+            raise ValueError(
+                "adc_max 必须大于每个传感器的 baseline"
+            )
+
+    def __call__(self, pressure):
+        if tuple(pressure.shape[1:]) != (1, 16, 16):
+            raise ValueError(
+                "pressure 形状必须是 [T,1,16,16]，"
+                f"实际为 {tuple(pressure.shape)}"
+            )
+
+        pressure = pressure.to(dtype=torch.float32)
+
+        return (
+            (pressure - self.baseline) / self.span
+        ).clamp_(0.0, 1.0)
+
+    def __repr__(self):
+        return (
+            f"{self.__class__.__name__}("
+            f"baseline_min={self.baseline.min().item():.1f}, "
+            f"baseline_max={self.baseline.max().item():.1f}, "
+            f"adc_max={self.adc_max:.1f})"
+        )
+
+
+def estimate_training_pressure_baseline(
+    pressures,
+    train_indices,
+    batch_size=64,
+):
+    """仅使用训练集，以众数估计每个传感器的静止 ADC 基线。
+
+    参数：
+        pressures:
+            完整数据张量，形状 ``[N,T,1,16,16]``，类型 uint8。
+        train_indices:
+            训练集在完整数据张量中的索引。
+        batch_size:
+            计算直方图时每次处理的训练样本数。
+
+    返回：
+        float32 张量，形状为 ``[1,1,16,16]``。
+
+    每个传感器分别统计 0～255 的出现次数。书写压力只在较少时间和
+    空间位置出现，因此众数比均值更适合作为无压力状态的基线。
+    """
+
+    if pressures.ndim != 5:
+        raise ValueError(
+            "pressures 必须是 [N,T,C,H,W] 五维张量"
+        )
+    if tuple(pressures.shape[2:]) != (1, 16, 16):
+        raise ValueError(
+            "pressures 的通道和空间形状必须是 [1,16,16]"
+        )
+    if pressures.dtype != torch.uint8:
+        raise TypeError(
+            "基线估计要求 pressures 为 torch.uint8，"
+            f"实际为 {pressures.dtype}"
+        )
+    if not isinstance(batch_size, int) or batch_size <= 0:
+        raise ValueError("batch_size 必须是正整数")
+
+    train_indices = torch.as_tensor(
+        train_indices,
+        dtype=torch.long,
+    ).flatten()
+
+    if train_indices.numel() == 0:
+        raise ValueError("train_indices 不能为空")
+    if train_indices.min() < 0 or train_indices.max() >= len(pressures):
+        raise IndexError("train_indices 中存在越界索引")
+
+    sensor_count = 16 * 16
+    adc_levels = 256
+    histogram = torch.zeros(
+        (sensor_count, adc_levels),
+        dtype=torch.int64,
+    )
+    sensor_offsets = (
+        torch.arange(sensor_count, dtype=torch.int64)
+        .mul(adc_levels)
+        .unsqueeze(1)
+    )
+
+    for index_batch in train_indices.split(batch_size):
+        # [B,T,1,16,16] -> [256,B*T]
+        values = (
+            pressures[index_batch, :, 0]
+            .permute(2, 3, 0, 1)
+            .reshape(sensor_count, -1)
+            .to(dtype=torch.int64)
+        )
+
+        encoded_values = values + sensor_offsets
+        batch_histogram = torch.bincount(
+            encoded_values.flatten(),
+            minlength=sensor_count * adc_levels,
+        ).reshape(sensor_count, adc_levels)
+
+        histogram.add_(batch_histogram)
+
+    baseline = (
+        histogram.argmax(dim=1)
+        .to(dtype=torch.float32)
+        .reshape(1, 1, 16, 16)
+    )
+
+    return baseline
+
+
 # 检查时间步长是否合规
 def validate_time_steps(time_steps):
     """
@@ -238,9 +379,11 @@ class STEMNISTDataset(Dataset):
         self,
         records,
         time_steps=240,
+        transform=None,
     ):
         self.records = records
         self.time_steps = validate_time_steps(time_steps)
+        self.transform = transform
 
         sample_count = len(records)
         # 保持 uint8：
@@ -289,6 +432,10 @@ class STEMNISTDataset(Dataset):
         # 返回指定索引的样本，包括压力数据和标签
         x = self.pressures[index]
         y = self.labels[index]
+
+        if self.transform is not None:
+            x = self.transform(x)
+
         return x, y
 
 def make_dataloaders(
@@ -324,6 +471,24 @@ def make_dataloaders(
     dataset = STEMNISTDataset(
         records,
         time_steps=time_steps,
+    )
+
+    # 数据划分完成后，仅使用训练集估计逐传感器压力基线。
+    # 验证集和测试集不会参与任何统计量计算，因此不存在数据泄漏。
+    pressure_baseline = estimate_training_pressure_baseline(
+        pressures=dataset.pressures,
+        train_indices=train_indices,
+    )
+    dataset.transform = NormalizePressure(
+        baseline=pressure_baseline,
+        adc_max=255.0,
+    )
+
+    print(
+        "训练集压力基线："
+        f"min={pressure_baseline.min().item():.1f}, "
+        f"median={pressure_baseline.median().item():.1f}, "
+        f"max={pressure_baseline.max().item():.1f}"
     )
 
     # 固定训练集打乱的随机数生成器

@@ -1,0 +1,30 @@
+* Numerically stable NbOx oscillation subcircuit
+* Pins: VIN OUTPUT GND
+
+.SUBCKT NbOx_OSC VIN OUTPUT GND PARAMS:
++ VH=1.676 VL=1.127
++ Rin=89213.44 Rme=806
++ Rload=10k Cparal=1u
++ A=1000000 Rstate=1 Cstate=100n
+
+* The threshold follows the stored state (cap), not B3's instantaneous
+* output.  This breaks the B3 -> state -> threshold -> B3 algebraic loop.
+.FUNC Vpos_f()=VL+(VH-VL)*V(cap,GND)
+.FUNC Vcompara_f()=0.5*(1+tanh(2*A*(V(pos,GND)-V(nega,GND))))
+.FUNC Rnbox_f()=Rin*Rme/(Rin*abs(1-V(cap,GND))+Rme*V(cap,GND))
+
+B1 pos GND V=Vpos_f()
+B2 nega GND V=V(OUTPUT,GND)
+B3 state GND V=Vcompara_f()
+
+RSTATE state cap {Rstate}
+CSTATE cap nbias {Cstate} IC=1
+VBIAS nbias GND 1
+
+B4 resis GND V=Rnbox_f()
+RDEVICE OUTPUT GND R=V(resis,GND)
+
+RLOAD_IN VIN OUTPUT {Rload}
+CPAR_OUT OUTPUT GND {Cparal}
+
+.ENDS NbOx_OSC

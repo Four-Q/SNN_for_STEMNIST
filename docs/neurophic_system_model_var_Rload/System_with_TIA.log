@@ -1,0 +1,21 @@
+LTspice 26.0.2 for Windows
+Circuit: C:\Users\Fortyfour\Desktop\SNN_for_STEMNIST\docs\neurophic_system_model_var_Rload\System_with_TIA.net
+Start Time: Sat Aug 15 16:45:49 2026
+Options:plotwinsize=0
+solver = Normal
+Maximum thread count: 8
+tnom = 27
+temp = 27
+method = trap
+Per .tran options, skipping operating point for transient analysis.
+Changing Tseed to 2e-09
+Changing Tseed to 2e-11
+Total elapsed time: 4.393 seconds.
+
+Files loaded:
+C:\Users\Fortyfour\Desktop\SNN_for_STEMNIST\docs\neurophic_system_model_var_Rload\System_with_TIA.net
+C:\Users\Fortyfour\Desktop\SNN_for_STEMNIST\docs\neurophic_system_model_var_Rload\NbOx_OSC_stable.lib
+C:\Users\Fortyfour\Desktop\SNN_for_STEMNIST\docs\neurophic_system_model_var_Rload\NbOx_OSC_VAR.lib
+C:\Users\Fortyfour\Desktop\SNN_for_STEMNIST\docs\neurophic_system_model_var_Rload\synapse_advanced_v2.sub
+C:\Users\Fortyfour\AppData\Local\LTspice\lib\sub\UniversalOpAmp2.lib
+
