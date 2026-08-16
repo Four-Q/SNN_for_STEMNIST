@@ -33,6 +33,7 @@ class ConvSNNv2(nn.Module):
         dropout: float = 0.2,
         tau: float = 10.0,
         logit_scale: float = 1.0,
+        bn_momentum: float = 0.1,
         backend: str = "torch",
     ) -> None:
         super().__init__()
@@ -45,11 +46,16 @@ class ConvSNNv2(nn.Module):
             raise ValueError("tau 必须是大于 1.0 的 float。")
         if logit_scale <= 0.0:
             raise ValueError("logit_scale 必须大于 0。")
+        if not isinstance(bn_momentum, (int, float)):
+            raise TypeError("bn_momentum 必须是数值。")
+        if not 0.0 < bn_momentum <= 1.0:
+            raise ValueError("bn_momentum 必须位于 (0, 1] 区间。")
 
         self.num_classes = num_classes
         self.dropout_probability = float(dropout)
         self.tau = tau
         self.logit_scale = float(logit_scale)
+        self.bn_momentum = float(bn_momentum)
         self.backend = backend
 
         # [T,N,1,16,16] -> [T,N,16,16,16]
@@ -61,7 +67,7 @@ class ConvSNNv2(nn.Module):
             bias=False,
             step_mode="m",
         )
-        self.bn1 = layer.BatchNorm2d(16, step_mode="m")
+        self.bn1 = layer.BatchNorm2d(16, momentum=self.bn_momentum, step_mode="m")
         self.lif1 = self._make_lif()
 
         # [T,N,16,16,16] -> [T,N,32,16,16]
@@ -73,7 +79,7 @@ class ConvSNNv2(nn.Module):
             bias=False,
             step_mode="m",
         )
-        self.bn2 = layer.BatchNorm2d(32, step_mode="m")
+        self.bn2 = layer.BatchNorm2d(32, momentum=self.bn_momentum, step_mode="m")
         self.lif2 = self._make_lif()
 
         # [T,N,32,16,16] -> [T,N,32,8,8]
@@ -92,7 +98,7 @@ class ConvSNNv2(nn.Module):
             bias=False,
             step_mode="m",
         )
-        self.bn3 = layer.BatchNorm2d(64, step_mode="m")
+        self.bn3 = layer.BatchNorm2d(64, momentum=self.bn_momentum, step_mode="m")
         self.lif3 = self._make_lif()
 
         # [T,N,64,8,8] -> [T,N,64,4,4]
@@ -205,6 +211,7 @@ class ConvSNNv2(nn.Module):
             f"num_classes={self.num_classes}, "
             f"dropout={self.dropout_probability}, "
             f"tau={self.tau}, logit_scale={self.logit_scale}, "
+            f"bn_momentum={self.bn_momentum}, "
             f"backend={self.backend!r}, "
             "readout='mean_current'"
         )
